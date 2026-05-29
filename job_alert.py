@@ -1,136 +1,133 @@
 import requests
 import smtplib
-import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import json
-import os
-from datetime import datetime
 
-# ============================
+# -----------------------------------------
 # CONFIGURATION
-# ============================
+# -----------------------------------------
 
-SEND_FROM = "jackdemarrr@icloud.com"
-SEND_TO = "douggmonroe@gmail.com"
-SMTP_SERVER = "smtp.mail.me.com"
-SMTP_PORT = 587
-SMTP_PASSWORD = os.getenv("ICLOUD_APP_PASSWORD")  # GitHub Secret
-
-JOB_SITES = [
-    "https://www.indeed.co.uk/jobs?q=customer+service&l=Essex",
-    "https://www.indeed.co.uk/jobs?q=customer+service&l=London",
-    "https://www.indeed.co.uk/jobs?q=customer+service&l=Edinburgh",
-    "https://www.indeed.co.uk/jobs?q=customer+service&l=Glasgow",
-    "https://www.indeed.co.uk/jobs?q=customer+service&l=Dundee",
-    "https://www.indeed.co.uk/jobs?q=customer+service&l=Aberdeen",
-    "https://www.indeed.co.uk/jobs?q=customer+service&l=Remote"
+KEYWORDS = [
+    "customer service",
+    "customer support",
+    "HR administrator",
+    "sales customer support",
+    "gallery attendant",
+    "warehouse",
+    "production worker",
+    "traffic warden",
+    "royal mail sorter"
 ]
 
-TITLE_KEYWORDS = [
-    "customer service", "call centre", "contact centre",
-    "customer support", "customer care", "inbound", "advisor", "agent"
-]
+SEARCH_URL = "https://www.reed.co.uk/api/1.0/search"
+API_KEY = ""  # Optional: only needed if you use Reed API keys
 
-BULK_HIRE_KEYWORDS = [
-    "multiple vacancies", "mass recruitment", "bulk intake",
-    "large intake", "several positions", "expanding team",
-    "high-volume", "training academy", "assessment centre"
-]
+SENDER_EMAIL = "YOUR_ICLOUD_EMAIL_HERE"
+RECEIVER_EMAIL = "YOUR_ICLOUD_EMAIL_HERE"
+ICLOUD_APP_PASSWORD = "WILL_BE_IN_ENV_VARIABLE"
 
-SEEN_FILE = "seen_jobs.json"
-# ============================
+SEEN_JOBS_FILE = "seen_jobs.txt"
 
 
-def load_seen():
-    if not os.path.exists(SEEN_FILE):
+# -----------------------------------------
+# LOAD SEEN JOBS
+# -----------------------------------------
+
+def load_seen_jobs():
+    try:
+        with open(SEEN_JOBS_FILE, "r") as f:
+            return set(line.strip() for line in f)
+    except FileNotFoundError:
         return set()
-    with open(SEEN_FILE, "r") as f:
-        return set(json.load(f))
 
 
-def save_seen(seen):
-    with open(SEEN_FILE, "w") as f:
-        json.dump(list(seen), f)
+def save_seen_job(job_id):
+    with open(SEEN_JOBS_FILE, "a") as f:
+        f.write(job_id + "\n")
 
 
-def fetch_jobs():
-    jobs = []
-    for url in JOB_SITES:
-        try:
-            r = requests.get(url, timeout=10)
-            if r.status_code == 200:
-                jobs.append((url, r.text))
-        except:
-            pass
-    return jobs
+# -----------------------------------------
+# SEARCH JOBS
+# -----------------------------------------
+
+def search_jobs(keyword):
+    params = {
+        "keywords": keyword,
+        "location": "Essex",
+        "distancefromlocation": 25
+    }
+
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Basic {API_KEY}"
+
+    response = requests.get(SEARCH_URL, params=params, headers=headers)
+
+    if response.status_code != 200:
+        print(f"Error fetching jobs for '{keyword}': {response.status_code}")
+        return []
+
+    data = response.json()
+    return data.get("results", [])
 
 
-def extract_jobs(html):
-    # Simple extraction — GitHub Actions can run this reliably
-    results = []
-    lines = html.split("\n")
-    for line in lines:
-        if "jobTitle" in line.lower():
-            results.append(line.strip())
-    return results
-
-
-def matches_title(text):
-    text = text.lower()
-    return any(k in text for k in TITLE_KEYWORDS)
-
-
-def is_bulk_hire(text):
-    text = text.lower()
-    return any(k in text for k in BULK_HIRE_KEYWORDS)
-
+# -----------------------------------------
+# SEND EMAIL
+# -----------------------------------------
 
 def send_email(subject, body):
     msg = MIMEMultipart()
-    msg["From"] = SEND_FROM
-    msg["To"] = SEND_TO
+    msg["From"] = SENDER_EMAIL
+    msg["To"] = RECEIVER_EMAIL
     msg["Subject"] = subject
 
     msg.attach(MIMEText(body, "plain"))
 
-    context = ssl.create_default_context()
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.starttls(context=context)
-        server.login(SEND_FROM, SMTP_PASSWORD)
-        server.sendmail(SEND_FROM, SEND_TO, msg.as_string())
+    with smtplib.SMTP_SSL("smtp.mail.me.com", 587) as server:
+        server.login(SENDER_EMAIL, ICLOUD_APP_PASSWORD)
+        server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, msg.as_string())
 
+
+# -----------------------------------------
+# MAIN LOGIC
+# -----------------------------------------
 
 def main():
-    seen = load_seen()
-    jobs_found = []
+    seen_jobs = load_seen_jobs()
+    new_jobs_found = False
 
-    for url, html in fetch_jobs():
-        extracted = extract_jobs(html)
-        for job in extracted:
-            if not matches_title(job):
+    for keyword in KEYWORDS:
+        print(f"Searching for: {keyword}")
+        jobs = search_jobs(keyword)
+
+        for job in jobs:
+            job_id = str(job.get("jobId"))
+
+            if job_id in seen_jobs:
                 continue
 
-            job_id = f"{url}-{job}"
+            seen_jobs.add(job_id)
+            save_seen_job(job_id)
+            new_jobs_found = True
 
-            if job_id in seen:
-                continue
+            title = job.get("jobTitle", "No title")
+            company = job.get("employerName", "Unknown company")
+            location = job.get("locationName", "Unknown location")
+            url = job.get("jobUrl", "No URL")
 
-            seen.add(job_id)
+            email_body = (
+                f"New job found:\n\n"
+                f"Title: {title}\n"
+                f"Company: {company}\n"
+                f"Location: {location}\n"
+                f"URL: {url}\n"
+            )
 
-            priority = is_bulk_hire(job)
-            jobs_found.append((job, url, priority))
+            send_email(f"New Job Alert: {title}", email_body)
+            print(f"Sent alert for: {title}")
 
-    save_seen(seen)
-
-    for job, url, priority in jobs_found:
-        if priority:
-            subject = f"HIGH PRIORITY — Bulk Hiring Detected"
-        else:
-            subject = f"New Job Alert"
-
-        body = f"Job: {job}\nSource: {url}\nTime: {datetime.now()}"
-        send_email(subject, body)
+    if not new_jobs_found:
+        print("No new jobs found.")
 
 
 if __name__ == "__main__":
