@@ -83,7 +83,7 @@ def send_email(subject, body):
 
     msg.attach(MIMEText(body, "plain"))
 
-    with smtplib.SMTP_SSL("smtp.mail.me.com", 587) as server:
+    with smtplib.SMTP_SSL("smtp.mail.me.com", 465) as server:
         server.login(SENDER_EMAIL, ICLOUD_APP_PASSWORD)
         server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, msg.as_string())
 
