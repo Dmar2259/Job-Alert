@@ -22,7 +22,8 @@ jobs:
       run: pip install requests
 
     - name: Run job alert bot
+    working-directory: ${{ github.workspace }}
       env:
         ICLOUD_APP_PASSWORD: ${{ secrets.ICLOUD_APP_PASSWORD }}
-      run: python ./job_alert.py
+      run: python job_alert.py
 
