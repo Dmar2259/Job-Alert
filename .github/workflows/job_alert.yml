@@ -24,4 +24,5 @@ jobs:
     - name: Run job alert bot
       env:
         ICLOUD_APP_PASSWORD: ${{ secrets.ICLOUD_APP_PASSWORD }}
-      run: python job_alert.py
+      run: python ./job_alert.py
+
