@@ -95,12 +95,7 @@ def send_email(subject, body):
 def main():
     seen_jobs = load_seen_jobs()
     new_jobs_found = False
-
-    send_email("Test Email", "This is a test email from your GitHub Action.")
-    print("Test email sent.")
-    return
-
-
+    
     for keyword in KEYWORDS:
         print(f"Searching for: {keyword}")
         jobs = search_jobs(keyword)
