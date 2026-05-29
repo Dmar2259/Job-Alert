@@ -22,8 +22,8 @@ KEYWORDS = [
 SEARCH_URL = "https://www.reed.co.uk/api/1.0/search"
 API_KEY = ""  # Optional: only needed if you use Reed API keys
 
-SENDER_EMAIL = "YOUR_ICLOUD_EMAIL_HERE"
-RECEIVER_EMAIL = "YOUR_ICLOUD_EMAIL_HERE"
+SENDER_EMAIL = "jackdemarrr@icloud.com"
+RECEIVER_EMAIL = "douggmonroe@gmail.com"
 ICLOUD_APP_PASSWORD = "WILL_BE_IN_ENV_VARIABLE"
 
 SEEN_JOBS_FILE = "seen_jobs.txt"
