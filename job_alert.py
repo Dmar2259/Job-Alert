@@ -76,16 +76,11 @@ def search_jobs(keyword):
 # -----------------------------------------
 
 def send_email(subject, body):
-    msg = MIMEMultipart()
-    msg["From"] = SENDER_EMAIL
-    msg["To"] = RECEIVER_EMAIL
-    msg["Subject"] = subject
-
-    msg.attach(MIMEText(body, "plain"))
-
-    with smtplib.SMTP_SSL("smtp.mail.me.com", 465) as server:
-        server.login(SENDER_EMAIL, ICLOUD_APP_PASSWORD)
-        server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, msg.as_string())
+    print("\n==============================")
+    print(subject)
+    print("------------------------------")
+    print(body)
+    print("==============================\n")
 
 
 # -----------------------------------------
